@@ -3,24 +3,127 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>엘리베이터 대기 현황 전광판 </title>
+
+  <title>엘리베이터 대기 현황 전광판</title>
+
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: sans-serif; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    h1 { margin-bottom: 30px; font-size: 28px; letter-spacing: -1px; display: flex; align-items: center; gap: 10px; }
-    .display-container { width: 100%; max-width: 540px; display: flex; flex-direction: column; gap: 20px; }
-    .card { background: #1e293b; border-radius: 24px; padding: 40px 20px; text-align: center; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); border: 1px solid #334155; }
-    .label { font-size: 18px; color: #94a3b8; font-weight: 500; margin-bottom: 10px; }
-    .number-wrap { display: flex; align-items: baseline; justify-content: center; gap: 8px; }
-    .number { font-size: 96px; font-weight: 800; color: #38bdf8; line-height: 1; }
-    .unit { font-size: 24px; color: #64748b; font-weight: bold; }
-    .badge { display: inline-block; padding: 6px 18px; border-radius: 999px; font-size: 16px; font-weight: bold; margin-top: 20px; }
-    .badge.low    { background: #14532d; color: #4ade80; }
-    .badge.medium { background: #713f12; color: #facc15; }
-    .badge.high   { background: #7f1d1d; color: #f87171; }
-    #waitTime { color: #f43f5e; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+      font-size: 28px;
+      letter-spacing: -1px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: center;
+    }
+
+    .display-container {
+      width: 100%;
+      max-width: 540px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card {
+      background: #1e293b;
+      border-radius: 24px;
+      padding: 40px 20px;
+      text-align: center;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      border: 1px solid #334155;
+    }
+
+    .label {
+      font-size: 18px;
+      color: #94a3b8;
+      font-weight: 500;
+      margin-bottom: 10px;
+    }
+
+    .number-wrap {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .number {
+      font-size: 96px;
+      font-weight: 800;
+      color: #38bdf8;
+      line-height: 1;
+    }
+
+    .unit {
+      font-size: 24px;
+      color: #64748b;
+      font-weight: bold;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 18px;
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+
+    .badge.low {
+      background: #14532d;
+      color: #4ade80;
+    }
+
+    .badge.medium {
+      background: #713f12;
+      color: #facc15;
+    }
+
+    .badge.high {
+      background: #7f1d1d;
+      color: #f87171;
+    }
+
+    #waitTime {
+      color: #f43f5e;
+    }
+
+    .connection {
+      margin-top: 24px;
+      font-size: 13px;
+      color: #64748b;
+      text-align: center;
+    }
+
+    .connection.good {
+      color: #4ade80;
+    }
+
+    .connection.bad {
+      color: #f87171;
+    }
   </style>
 </head>
+
 <body>
 
   <h1>🛗 엘리베이터 대기 현황</h1>
@@ -28,64 +131,108 @@
   <div class="display-container">
     <div class="card">
       <div class="label">현재 대기 인원</div>
+
       <div class="number-wrap">
         <span class="number" id="count">0</span>
         <span class="unit">명</span>
       </div>
+
       <div id="badge" class="badge low">여유</div>
     </div>
 
     <div class="card">
       <div class="label">예상 대기 시간</div>
+
       <div class="number-wrap">
-        <span class="number" id="waitTime">0</span>
+        <span class="number" id="waitTime">0.0</span>
         <span class="unit">분</span>
       </div>
     </div>
   </div>
 
+  <div id="connection" class="connection">서버 연결 중...</div>
+
 <script>
   const STREAM_URL = "https://ntfy.sh/seowon0309_elevator_secret_channel/sse";
 
+  const countEl = document.getElementById("count");
+  const waitTimeEl = document.getElementById("waitTime");
+  const badgeEl = document.getElementById("badge");
+  const connectionEl = document.getElementById("connection");
+
+  let lastUpdatedAt = 0;
+  let eventSource = null;
+
+  function updateDisplay(currentCount, currentWait) {
+    countEl.innerText = currentCount;
+    waitTimeEl.innerText = currentWait;
+
+    if (currentCount === 0) {
+      badgeEl.className = "badge low";
+      badgeEl.innerText = "여유";
+    } else if (currentCount <= 5) {
+      badgeEl.className = "badge medium";
+      badgeEl.innerText = "보통";
+    } else {
+      badgeEl.className = "badge high";
+      badgeEl.innerText = "혼잡";
+    }
+  }
+
+  function setConnectionStatus(text, type) {
+    connectionEl.innerText = text;
+    connectionEl.className = "connection " + type;
+  }
+
   function startListening() {
-    const eventSource = new EventSource(STREAM_URL);
+    if (eventSource) {
+      eventSource.close();
+    }
+
+    eventSource = new EventSource(STREAM_URL);
+
+    eventSource.onopen = () => {
+      setConnectionStatus("실시간 서버 연결됨", "good");
+    };
 
     eventSource.onmessage = (event) => {
       try {
         const rawData = JSON.parse(event.data);
-        // 서버에서 던져준 텍스트 메시지가 존재할 때 처리
-        if (rawData && rawData.message) {
-          // [수정] "쉼표"를 기준으로 쪼개서 각각 인원수와 대기시간 매핑
-          const parts = rawData.message.split(",");
-          if(parts.length === 2) {
-            const currentCount = parseInt(parts[0]) || 0;
-            const currentWait = parts[1] || "0";
 
-            document.getElementById("count").innerText = currentCount;
-            document.getElementById("waitTime").innerText = currentWait;
+        if (!rawData.message) return;
 
-            const badge = document.getElementById("badge");
-            if (currentCount === 0) {
-              badge.className = "badge low"; badge.innerText = "여유";
-            } else if (currentCount <= 5) {
-              badge.className = "badge medium"; badge.innerText = "보통";
-            } else {
-              badge.className = "badge high"; badge.innerText = "혼잡";
-            }
-          }
-        }
+        const message = JSON.parse(rawData.message);
+
+        const currentCount = Number(message.count) || 0;
+        const currentWait = message.waitTime || "0.0";
+        const updatedAt = Number(message.updatedAt) || Date.now();
+
+        // 오래된 데이터가 뒤늦게 도착해서 최신 화면을 덮는 것 방지
+        if (updatedAt < lastUpdatedAt) return;
+
+        lastUpdatedAt = updatedAt;
+
+        updateDisplay(currentCount, currentWait);
+        setConnectionStatus("최근 업데이트 완료", "good");
+
       } catch (e) {
-        console.error("데이터 매핑 실패:", e);
+        console.error("데이터 수신 실패:", e);
       }
     };
 
     eventSource.onerror = () => {
+      setConnectionStatus("연결 재시도 중...", "bad");
+
       eventSource.close();
-      setTimeout(startListening, 1500);
+
+      setTimeout(() => {
+        startListening();
+      }, 1000);
     };
   }
 
   startListening();
 </script>
+
 </body>
 </html>

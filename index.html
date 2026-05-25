@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>엘리베이터 카운터 - 관리자용</title>
+
   <style>
     body {
       font-family: sans-serif;
@@ -78,12 +79,16 @@
   <div class="status" id="status">네트워크 서버 연결 중...</div>
 
   <div class="info-box">
-    <p>현재 원격 전송 중인 인원:
+    <p>
+      현재 원격 전송 중인 인원:
       <strong id="admin-count" style="color:#38bdf8">0</strong>명
     </p>
-    <p>예상 대기 시간:
+
+    <p>
+      예상 대기 시간:
       <strong id="admin-wait" style="color:#f43f5e">0.0</strong>분
     </p>
+
     <button class="btn" onclick="resetCount()">🔄 인원 초기화</button>
   </div>
 
@@ -99,9 +104,12 @@
     구현 방식
     - 사람이 중앙선을 왼쪽에서 오른쪽으로 지나가면 대기인원 +1
     - 25초마다 엘리베이터 한 대가 도착한다고 보고 대기인원 -8
-    - 예상 대기시간은 현재 대기인원 기준으로 매번 새로 계산
-    - 대기시간은 0.x분 형식으로 표시
+    - 카메라용에서 대기시간 계산
+    - 배포용은 카메라용이 보낸 값을 그대로 표시
   */
+
+  const TOPIC_URL = "https://ntfy.sh/seowon0309_elevator_secret_channel";
+
   const ELEVATOR_COUNT = 2;
   const CAPACITY_PER_ELEVATOR = 8;
   const ONE_WAY_SECONDS = 15;
@@ -113,48 +121,6 @@
   const SINGLE_ELEVATOR_CAPACITY = CAPACITY_PER_ELEVATOR;
   const SINGLE_ELEVATOR_INTERVAL = CYCLE_SECONDS / ELEVATOR_COUNT;
 
-  function calculateWaitTime(count) {
-    if (count === 0) return "0분";
-
-    if (count <= 8) {
-      return "1분 미만";
-    }
-
-    if (count <= 16) {
-      return "약 1분";
-    }
-
-    if (count <= 32) {
-      return "약 2분";
-    }
-
-    if (count <= 48) {
-      return "약 3분";
-    }
-
-    return "약 4분 이상";
-  }
-
-  function sendToServer() {
-    const wait = calculateWaitTime(waitingCount);
-
-    document.getElementById("admin-count").innerText = waitingCount;
-    document.getElementById("admin-wait").innerText = wait;
-
-    fetch(TOPIC_URL, {
-      method: "POST",
-      body: `${waitingCount},${wait}`
-    }).catch(e => console.error("전송 실패:", e));
-  }
-
-  function decreaseByOneElevator() {
-    if (waitingCount > 0) {
-      waitingCount = Math.max(0, waitingCount - SINGLE_ELEVATOR_CAPACITY);
-      sendToServer();
-    }
-  }
-  setInterval(decreaseByOneElevator, SINGLE_ELEVATOR_INTERVAL * 1000);
-  
   let waitingCount = 0;
 
   let prevFrame = null;
@@ -173,17 +139,9 @@
   const octx = overlay.getContext("2d");
   const bctx = buf.getContext("2d");
 
-  const TOPIC_URL = "https://ntfy.sh/seowon0309_elevator_secret_channel";
-
   function calculateWaitTime(count) {
     if (count === 0) return "0.0";
 
-    /*
-      현재 대기인원을 기준으로 예상 대기시간 계산
-
-      엘리베이터 2대가 한 사이클 50초 동안 최대 16명을 처리한다고 가정.
-      따라서 한 사람당 평균 처리 시간은 50초 / 16명 = 약 3.125초.
-    */
     const secondsPerPerson = CYCLE_SECONDS / TOTAL_CAPACITY;
     const waitSeconds = count * secondsPerPerson;
     const waitMinutes = waitSeconds / 60;
@@ -197,9 +155,15 @@
     document.getElementById("admin-count").innerText = waitingCount;
     document.getElementById("admin-wait").innerText = wait;
 
+    const data = {
+      count: waitingCount,
+      waitTime: wait,
+      updatedAt: Date.now()
+    };
+
     fetch(TOPIC_URL, {
       method: "POST",
-      body: `${waitingCount},${wait}`
+      body: JSON.stringify(data)
     }).catch(e => console.error("전송 실패:", e));
   }
 
@@ -212,6 +176,9 @@
 
   // 25초마다 엘리베이터 한 대가 사람을 태워간다고 가정
   setInterval(decreaseByOneElevator, SINGLE_ELEVATOR_INTERVAL * 1000);
+
+  // 배포용 화면이 늦게 접속해도 최신값을 계속 받도록 3초마다 현재 상태 재전송
+  setInterval(sendToServer, 3000);
 
   sendToServer();
 
@@ -237,7 +204,7 @@
     };
   })
   .catch(err => {
-    document.getElementById("status").innerText = "❌ 오류: " + err.message;
+    document.getElementById("status").innerText = "❌ 카메라 오류: " + err.message;
   });
 
   async function requestWakeLock() {

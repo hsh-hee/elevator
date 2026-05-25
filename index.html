@@ -106,75 +106,55 @@
 
   const TOPIC_URL = "https://ntfy.sh/seowon0309_elevator_secret_channel";
 
-  const ELEVATOR_COUNT = 2;
-  const CAPACITY_PER_ELEVATOR = 8;
-  const ONE_WAY_SECONDS = 15;
-  const DOOR_SECONDS = 20;
+ const ELEVATOR_COUNT = 2;
+const CAPACITY_PER_ELEVATOR = 8;
+const ONE_WAY_SECONDS = 15;
+const DOOR_SECONDS = 30;
 
-  const TOTAL_CAPACITY = ELEVATOR_COUNT * CAPACITY_PER_ELEVATOR;
-  const CYCLE_SECONDS = (ONE_WAY_SECONDS * 2) + DOOR_SECONDS;
+const TOTAL_CAPACITY = ELEVATOR_COUNT * CAPACITY_PER_ELEVATOR;
+const CYCLE_SECONDS = (ONE_WAY_SECONDS * 2) + DOOR_SECONDS;
 
-  const SINGLE_ELEVATOR_CAPACITY = CAPACITY_PER_ELEVATOR;
-  const SINGLE_ELEVATOR_INTERVAL = 30;
+const SINGLE_ELEVATOR_CAPACITY = CAPACITY_PER_ELEVATOR;
 
-  let waitingCount = 0;
+// 30초마다 8명씩 감소
+const SINGLE_ELEVATOR_INTERVAL = 30;
 
-  let prevFrame = null;
-  let bgFrame = null;
-  let frameCount = 0;
+const TOPIC_URL = "https://ntfy.sh/seowon0309_elevator_secret_channel";
 
-  let trackedBlobs = [];
-  let nextBlobId = 0;
-  let lastCountTime = 0;
-  let wakeLock = null;
+let waitingCount = 0;
 
-  const video = document.getElementById("cam");
-  const overlay = document.getElementById("overlay");
-  const buf = document.getElementById("buf");
+function calculateWaitTime(count) {
+  if (count === 0) return "0.0";
 
-  const octx = overlay.getContext("2d");
-  const bctx = buf.getContext("2d");
+  // 30초에 8명 처리 → 1명당 3.75초
+  const secondsPerPerson = SINGLE_ELEVATOR_INTERVAL / SINGLE_ELEVATOR_CAPACITY;
+  const waitSeconds = count * secondsPerPerson;
+  const waitMinutes = waitSeconds / 60;
 
-  function calculateWaitTime(count) {
-    if (count === 0) return "0.0";
+  return waitMinutes.toFixed(1);
+}
 
-    const secondsPerPerson = CYCLE_SECONDS / TOTAL_CAPACITY;
-    const waitSeconds = count * secondsPerPerson;
-    const waitMinutes = waitSeconds / 60;
+function sendToServer() {
+  const wait = calculateWaitTime(waitingCount);
 
-    return waitMinutes.toFixed(1);
+  document.getElementById("admin-count").innerText = waitingCount;
+  document.getElementById("admin-wait").innerText = wait;
+
+  fetch(TOPIC_URL, {
+    method: "POST",
+    body: `${waitingCount},${wait}`
+  }).catch(e => console.error("전송 실패:", e));
+}
+
+function decreaseByOneElevator() {
+  if (waitingCount > 0) {
+    waitingCount = Math.max(0, waitingCount - SINGLE_ELEVATOR_CAPACITY);
+    sendToServer();
   }
+}
 
-  function sendToServer() {
-    const wait = calculateWaitTime(waitingCount);
-
-    document.getElementById("admin-count").innerText = waitingCount;
-    document.getElementById("admin-wait").innerText = wait;
-
-    const data = {
-      count: waitingCount,
-      waitTime: wait,
-      updatedAt: Date.now()
-    };
-
-    fetch(TOPIC_URL, {
-      method: "POST",
-      body: JSON.stringify(data)
-    }).catch(e => console.error("전송 실패:", e));
-  }
-
-  function decreaseByOneElevator() {
-    if (waitingCount > 0) {
-      waitingCount = Math.max(0, waitingCount - SINGLE_ELEVATOR_CAPACITY);
-      sendToServer();
-    }
-  }
-
-  // 25초마다 엘리베이터 한 대가 사람을 태워간다고 가정
-  setInterval(decreaseByOneElevator, SINGLE_ELEVATOR_INTERVAL * 1000);
-
-  // 배포용 화면이 늦게 접속해도 최신값을 계속 받도록 3초마다 재전송
-  setInterval(sendToServer, 3000);
+// 30초마다 엘리베이터 한 대가 8명씩 태워감
+setInterval(decreaseByOneElevator, SINGLE_ELEVATOR_INTERVAL * 1000);
 
   sendToServer();
 

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -207,7 +207,7 @@
         const currentWait = message.waitTime || "0.0";
         const updatedAt = Number(message.updatedAt) || Date.now();
 
-        // 오래된 데이터가 뒤늦게 도착해서 최신 화면을 덮는 것 방지
+        // 예전 데이터가 늦게 도착해서 최신 화면을 덮는 것 방지
         if (updatedAt < lastUpdatedAt) return;
 
         lastUpdatedAt = updatedAt;

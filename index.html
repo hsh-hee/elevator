@@ -94,7 +94,7 @@
     - 한 대당 탑승 가능 인원: 약 8명
     - 1층 -> 4층 이동 시간: 15초
     - 4층 -> 1층 이동 시간: 15초
-    - 탑승/하차 여유 시간: 약 30초
+    - 탑승/하차 여유 시간: 약 20초
 
     구현 방식
     - 사람이 중앙선을 왼쪽에서 오른쪽으로 지나가면 대기인원 +1
@@ -105,55 +105,13 @@
   const ELEVATOR_COUNT = 2;
   const CAPACITY_PER_ELEVATOR = 8;
   const ONE_WAY_SECONDS = 15;
-  const DOOR_SECONDS = 30;
+  const DOOR_SECONDS = 20;
 
   const TOTAL_CAPACITY = ELEVATOR_COUNT * CAPACITY_PER_ELEVATOR;
   const CYCLE_SECONDS = (ONE_WAY_SECONDS * 2) + DOOR_SECONDS;
 
   const SINGLE_ELEVATOR_CAPACITY = CAPACITY_PER_ELEVATOR;
-  const SINGLE_ELEVATOR_INTERVAL = CYCLE_SECONDS / ELEVATOR_COUNT;
-
-  function calculateWaitTime(count) {
-    if (count === 0) return "0분";
-
-    if (count <= 8) {
-      return "1분 미만";
-    }
-
-    if (count <= 16) {
-      return "약 1분";
-    }
-
-    if (count <= 32) {
-      return "약 2분";
-    }
-
-    if (count <= 48) {
-      return "약 3분";
-    }
-
-    return "약 4분 이상";
-  }
-
-  function sendToServer() {
-    const wait = calculateWaitTime(waitingCount);
-
-    document.getElementById("admin-count").innerText = waitingCount;
-    document.getElementById("admin-wait").innerText = wait;
-
-    fetch(TOPIC_URL, {
-      method: "POST",
-      body: `${waitingCount},${wait}`
-    }).catch(e => console.error("전송 실패:", e));
-  }
-
-  function decreaseByOneElevator() {
-    if (waitingCount > 0) {
-      waitingCount = Math.max(0, waitingCount - SINGLE_ELEVATOR_CAPACITY);
-      sendToServer();
-    }
-  }
-  setInterval(decreaseByOneElevator, SINGLE_ELEVATOR_INTERVAL * 1000);
+  const SINGLE_ELEVATOR_INTERVAL = 30;
   
   let waitingCount = 0;
 

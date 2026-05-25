@@ -79,16 +79,12 @@
   <div class="status" id="status">네트워크 서버 연결 중...</div>
 
   <div class="info-box">
-    <p>
-      현재 원격 전송 중인 인원:
+    <p>현재 원격 전송 중인 인원:
       <strong id="admin-count" style="color:#38bdf8">0</strong>명
     </p>
-
-    <p>
-      예상 대기 시간:
+    <p>예상 대기 시간:
       <strong id="admin-wait" style="color:#f43f5e">0.0</strong>분
     </p>
-
     <button class="btn" onclick="resetCount()">🔄 인원 초기화</button>
   </div>
 
@@ -177,7 +173,7 @@
   // 25초마다 엘리베이터 한 대가 사람을 태워간다고 가정
   setInterval(decreaseByOneElevator, SINGLE_ELEVATOR_INTERVAL * 1000);
 
-  // 배포용 화면이 늦게 접속해도 최신값을 계속 받도록 3초마다 현재 상태 재전송
+  // 배포용 화면이 늦게 접속해도 최신값을 계속 받도록 3초마다 재전송
   setInterval(sendToServer, 3000);
 
   sendToServer();
@@ -204,7 +200,7 @@
     };
   })
   .catch(err => {
-    document.getElementById("status").innerText = "❌ 카메라 오류: " + err.message;
+    document.getElementById("status").innerText = "❌ 오류: " + err.message;
   });
 
   async function requestWakeLock() {
